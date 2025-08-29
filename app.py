@@ -1,24 +1,35 @@
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-# Load pre-trained model
-chatbot = pipeline("text-generation", model="gpt2")
+# Load Flan-T5
+model_name = "google/flan-t5-small"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
-# Personality definition
-zyra_persona = """
-You are Zyra, a friendly bee mentor who loves teaching students.
-You explain things clearly, give examples, and encourage learning.
-Keep responses kind, engaging, and slightly playful like a bee buzzing.
-"""
+chatbot = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
+
+print("🐝 Zyra the Bee Mentor is ready! Type 'quit' to exit.")
+
+# Define Zyra's role (used as context, not literal text)
+system_prompt = (
+    "You are Zyra, a friendly bee mentor who helps students learn. "
+    "Always answer clearly, encourage students, and keep responses short and factual."
+)
 
 def get_response(user_input):
-    prompt = f"{zyra_persona}\nStudent: {user_input}\nZyra:"
-    response = chatbot(prompt, max_length=150, do_sample=True, temperature=0.7)[0]['generated_text']
-    return response.split("Zyra:")[-1].strip()
+    # With Flan-T5 we frame it as an instruction
+    full_prompt = f"Answer as Zyra, a friendly bee mentor who helps students learn.\n\nQuestion: {user_input}\nAnswer:"
+    
+    response = chatbot(
+        full_prompt,
+        max_new_tokens=150,
+    )[0]['generated_text']
 
-if __name__ == "__main__":
-    print("🐝 Zyra the Bee Mentor is ready! Type 'quit' to exit.")
-    while True:
-        user_input = input("Student: ")
-        if user_input.lower() in ["quit", "exit"]:
-            break
-        print("Zyra:", get_response(user_input))
+    return response.strip()
+
+
+# Main loop
+while True:
+    user_input = input("Student: ")
+    if user_input.lower() == "quit":
+        break
+    print("Zyra:", get_response(user_input))
